@@ -1,0 +1,30 @@
+services:
+  # Backend API Service
+  - type: web
+    name: loan-business-api
+    runtime: docker
+    dockerFilePath: backend.Dockerfile
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8000
+
+  # Frontend Static Site
+  - type: web
+    name: loan-business-frontend
+    runtime: docker
+    dockerFilePath: frontend.Dockerfile
+    plan: free
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          name: loan-business-api
+          type: web
+          property: url
+      - key: VITE_WS_URL
+        fromService:
+          name: loan-business-api
+          type: web
+          property: url
+        # Note: We'll need to manually change 'https' to 'wss' in the Render dashboard 
+        # or use a small helper in the code (which I already added).

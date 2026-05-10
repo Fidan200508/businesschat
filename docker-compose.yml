@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+    restart: always
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend.Dockerfile
+      args:
+        - VITE_API_URL=http://your_droplet_ip:8000
+        - VITE_WS_URL=http://your_droplet_ip:8000
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always
