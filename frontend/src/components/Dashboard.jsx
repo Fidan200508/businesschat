@@ -2,9 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import ChatBot from './ChatBot';
 
-const API_URL = import.meta.env.VITE_API_URL || (
-  window.location.hostname === 'localhost' ? 'http://localhost:8000' : '/api'
-);
+const API_URL = window.location.hostname === 'localhost' ? 'http://localhost:8000' : '/api';
 
 function formatApiError(detail) {
   if (!detail) {

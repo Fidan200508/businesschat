@@ -2,11 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle, Send, X, Bot, Activity } from 'lucide-react';
 
 const getWsUrl = () => {
-  const url = import.meta.env.VITE_WS_URL || (
-    window.location.hostname === 'localhost'
-      ? 'http://localhost:8000'
-      : window.location.origin
-  );
+  const url = window.location.hostname === 'localhost'
+    ? 'http://localhost:8000'
+    : window.location.origin;
   const wsUrl = url.replace('http', 'ws');
   return `${wsUrl}/ws/chat`;
 };
