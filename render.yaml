@@ -28,10 +28,7 @@ services:
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: 30
       - key: FRONTEND_ORIGIN
-        fromService:
-          name: loan-business-frontend
-          type: web
-          property: url
+        value: https://loan-business-frontend.onrender.com
 
   # Frontend web service
   - type: web
@@ -43,12 +40,6 @@ services:
       - key: PORT
         value: 80
       - key: VITE_API_URL
-        fromService:
-          name: loan-business-api
-          type: web
-          property: url
+        value: https://loan-business-api.onrender.com
       - key: VITE_WS_URL
-        fromService:
-          name: loan-business-api
-          type: web
-          property: url
+        value: https://loan-business-api.onrender.com
