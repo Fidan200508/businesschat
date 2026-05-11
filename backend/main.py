@@ -164,16 +164,26 @@ class ChatResponse(BaseModel):
 @app.post("/api/register", response_model=UserResponse)
 @app.post("/register", response_model=UserResponse)
 def register(user: UserCreate, db: Session = Depends(get_db)):
-    db_user = db.query(models.User).filter(models.User.username == user.username).first()
-    if db_user:
-        raise HTTPException(status_code=400, detail="Username already registered")
-    
-    hashed_password = auth.get_password_hash(user.password)
-    new_user = models.User(username=user.username, hashed_password=hashed_password)
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
+    try:
+        db_user = db.query(models.User).filter(models.User.username == user.username).first()
+        if db_user:
+            raise HTTPException(status_code=400, detail="Username already registered")
+
+        hashed_password = auth.get_password_hash(user.password)
+        new_user = models.User(username=user.username, hashed_password=hashed_password)
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        return new_user
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        print(f"Registration failed: {type(exc).__name__}: {exc}", flush=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Registration failed: {type(exc).__name__}"
+        ) from exc
 
 @app.post("/api/token", response_model=Token)
 @app.post("/token", response_model=Token)
