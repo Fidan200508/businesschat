@@ -1,17 +1,28 @@
+databases:
+  - name: loan-business-db
+    plan: free
+    databaseName: loan_business
+    user: loan_business_user
+
 services:
-  # Backend API Service
+  # Backend API service
   - type: web
     name: loan-business-api
     runtime: docker
-    dockerFilePath: backend.Dockerfile
+    dockerfilePath: backend.Dockerfile
     plan: free
+    healthCheckPath: /
     envVars:
       - key: PORT
         value: 8000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: loan-business-db
+          property: connectionString
       - key: SECRET_KEY
-        sync: false   # Set manually in Render dashboard — must be a long random string
+        generateValue: true
       - key: ENCRYPTION_KEY
-        sync: false   # Set manually in Render dashboard — generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+        sync: false
       - key: ALGORITHM
         value: HS256
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
@@ -22,13 +33,15 @@ services:
           type: web
           property: url
 
-  # Frontend Static Site
+  # Frontend web service
   - type: web
     name: loan-business-frontend
     runtime: docker
-    dockerFilePath: frontend.Dockerfile
+    dockerfilePath: frontend.Dockerfile
     plan: free
     envVars:
+      - key: PORT
+        value: 80
       - key: VITE_API_URL
         fromService:
           name: loan-business-api
@@ -39,4 +52,3 @@ services:
           name: loan-business-api
           type: web
           property: url
-        # Note: Render gives https:// URLs — ChatBot.jsx already converts https→wss automatically.

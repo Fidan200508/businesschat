@@ -87,6 +87,11 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
+
+@app.get("/")
+def health_check():
+    return {"status": "ok"}
+
 # Load the ML Model
 try:
     # Ensure it looks in the correct path relative to the backend
