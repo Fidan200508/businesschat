@@ -37,13 +37,5 @@ services:
     envVars:
       - key: PORT
         value: 80
-      - key: BACKEND_HOST
-        fromService:
-          name: loan-business-api
-          type: web
-          property: host
-      - key: BACKEND_PORT
-        fromService:
-          name: loan-business-api
-          type: web
-          property: port
+      - key: BACKEND_URL
+        value: https://loan-business-api.onrender.com
