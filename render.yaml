@@ -37,5 +37,3 @@ services:
     envVars:
       - key: PORT
         value: 80
-      - key: BACKEND_URL
-        value: https://loan-business-api.onrender.com
