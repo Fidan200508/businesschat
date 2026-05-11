@@ -84,7 +84,7 @@ app.add_middleware(
     allow_origins=_allowed_origins,
     allow_origin_regex=r"https://.*\.onrender\.com",
     allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
@@ -161,6 +161,7 @@ class ChatResponse(BaseModel):
     reply: str
 
 # --- Authentication Routes ---
+@app.post("/api/register", response_model=UserResponse)
 @app.post("/register", response_model=UserResponse)
 def register(user: UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.username == user.username).first()
@@ -174,6 +175,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)
     return new_user
 
+@app.post("/api/token", response_model=Token)
 @app.post("/token", response_model=Token)
 @limiter.limit("5/minute")
 def login_for_access_token(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
@@ -191,6 +193,7 @@ def login_for_access_token(request: Request, form_data: OAuth2PasswordRequestFor
     return {"access_token": access_token, "token_type": "bearer"}
 
 # --- Prediction Routes ---
+@app.post("/api/predict", response_model=PredictionResponse)
 @app.post("/predict", response_model=PredictionResponse)
 def predict_risk(req: PredictionRequest, current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
     if model is None:
@@ -269,6 +272,7 @@ def predict_risk(req: PredictionRequest, current_user: models.User = Depends(aut
         explanations=explanations
     )
 
+@app.get("/api/history")
 @app.get("/history")
 def get_history(current_user: models.User = Depends(auth.get_current_user), db: Session = Depends(get_db)):
     records = db.query(models.PredictionHistory).filter(models.PredictionHistory.user_id == current_user.id).order_by(models.PredictionHistory.created_at.desc()).all()
@@ -286,6 +290,7 @@ def get_history(current_user: models.User = Depends(auth.get_current_user), db: 
         } for r in records
     ]
 
+@app.post("/api/chat", response_model=ChatResponse)
 @app.post("/chat", response_model=ChatResponse)
 def chat_with_advisor(req: ChatRequest, current_user: models.User = Depends(auth.get_current_user)):
     msg = req.message.lower()
