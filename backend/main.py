@@ -11,6 +11,15 @@ from typing import List, Optional, Dict, Any
 from datetime import timedelta
 import json
 import asyncio
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from fastapi import Request
+from fastapi.responses import JSONResponse
+from dotenv import load_dotenv
+from .encryption import encrypt_value
+
+load_dotenv()
 
 from . import models, database, auth, agents
 from .agents import advisor_graph
@@ -20,13 +29,24 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Corporate Loan Risk API")
 
-# Configure CORS for the React frontend
+# Rate limiter setup
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={"error": "Too many requests. Please wait and try again."}
+    )
+
+# CORS — restricted to frontend only
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, restrict to frontend URL
+    allow_origins=["http://localhost:3000", "http://localhost:5173"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # Load the ML Model
@@ -111,7 +131,8 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     return new_user
 
 @app.post("/token", response_model=Token)
-def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def login_for_access_token(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.username == form_data.username).first()
     if not user or not auth.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
