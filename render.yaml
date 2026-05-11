@@ -27,8 +27,6 @@ services:
         value: HS256
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: 30
-      - key: FRONTEND_ORIGIN
-        value: https://loan-business-frontend.onrender.com
 
   # Frontend web service
   - type: web
@@ -39,7 +37,13 @@ services:
     envVars:
       - key: PORT
         value: 80
-      - key: VITE_API_URL
-        value: https://loan-business-api.onrender.com
-      - key: VITE_WS_URL
-        value: https://loan-business-api.onrender.com
+      - key: BACKEND_HOST
+        fromService:
+          name: loan-business-api
+          type: web
+          property: host
+      - key: BACKEND_PORT
+        fromService:
+          name: loan-business-api
+          type: web
+          property: port
