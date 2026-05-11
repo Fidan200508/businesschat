@@ -16,7 +16,7 @@ def load_assets():
     try:
         model = joblib.load("extra_trees_model.pkl")
         # This is the file that fixes the 'Finance' error
-        encoder = joblib.load("Financial_Risk_Label_Encoder.pkl")
+        encoder = joblib.load("Financial_Risk_Label_encoder.pkl")
         return model, encoder
     except Exception as e:
         st.error(f"Error loading files: {e}")

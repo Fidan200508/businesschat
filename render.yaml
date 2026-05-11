@@ -8,6 +8,19 @@ services:
     envVars:
       - key: PORT
         value: 8000
+      - key: SECRET_KEY
+        sync: false   # Set manually in Render dashboard — must be a long random string
+      - key: ENCRYPTION_KEY
+        sync: false   # Set manually in Render dashboard — generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 30
+      - key: FRONTEND_ORIGIN
+        fromService:
+          name: loan-business-frontend
+          type: web
+          property: url
 
   # Frontend Static Site
   - type: web
@@ -26,5 +39,4 @@ services:
           name: loan-business-api
           type: web
           property: url
-        # Note: We'll need to manually change 'https' to 'wss' in the Render dashboard 
-        # or use a small helper in the code (which I already added).
+        # Note: Render gives https:// URLs — ChatBot.jsx already converts https→wss automatically.

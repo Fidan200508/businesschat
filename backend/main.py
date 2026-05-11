@@ -11,13 +11,35 @@ from typing import List, Optional, Dict, Any
 from datetime import timedelta
 import json
 import asyncio
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from dotenv import load_dotenv
-from .encryption import encrypt_value
+try:
+    from slowapi import Limiter
+    from slowapi.util import get_remote_address
+    from slowapi.errors import RateLimitExceeded
+except ModuleNotFoundError:
+    Limiter = None
+    RateLimitExceeded = None
+
+    def get_remote_address(request: Request):
+        return request.client.host if request.client else "local"
+
+try:
+    from dotenv import load_dotenv
+except ModuleNotFoundError:
+    def load_dotenv(dotenv_path=None, *args, **kwargs):
+        path = dotenv_path or os.path.join(os.getcwd(), ".env")
+        if not os.path.exists(path):
+            return False
+        with open(path, encoding="utf-8") as env_file:
+            for line in env_file:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+        return True
+# encryption imported where needed; encrypt_value not currently used in routes
 
 load_dotenv()
 
@@ -30,20 +52,36 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Corporate Loan Risk API")
 
 # Rate limiter setup
-limiter = Limiter(key_func=get_remote_address)
+if Limiter is not None:
+    limiter = Limiter(key_func=get_remote_address)
+else:
+    class _NoOpLimiter:
+        def limit(self, _limit: str):
+            def decorator(func):
+                return func
+            return decorator
+
+    limiter = _NoOpLimiter()
+
 app.state.limiter = limiter
 
-@app.exception_handler(RateLimitExceeded)
-async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
-    return JSONResponse(
-        status_code=429,
-        content={"error": "Too many requests. Please wait and try again."}
-    )
+if RateLimitExceeded is not None:
+    @app.exception_handler(RateLimitExceeded)
+    async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+        return JSONResponse(
+            status_code=429,
+            content={"error": "Too many requests. Please wait and try again."}
+        )
 
 # CORS — restricted to frontend only
+_allowed_origins = ["http://localhost:3000", "http://localhost:5173"]
+_production_origin = os.getenv("FRONTEND_ORIGIN")
+if _production_origin:
+    _allowed_origins.append(_production_origin)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
@@ -324,10 +362,18 @@ async def websocket_chat(websocket: WebSocket, db: Session = Depends(get_db)):
             context = req_data.get("context", {})
             token = req_data.get("token", "")
             
-            # Basic token validation (simplified for demo)
+            # Decode JWT directly — get_current_user() uses FastAPI Depends and
+            # cannot be called as a plain function in a WebSocket handler.
             try:
-                user = auth.get_current_user(token, db)
-            except:
+                from jose import JWTError, jwt as jose_jwt
+                payload = jose_jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
+                username: str = payload.get("sub")
+                if not username:
+                    raise ValueError("No subject in token")
+                user = db.query(models.User).filter(models.User.username == username).first()
+                if user is None:
+                    raise ValueError("User not found")
+            except Exception:
                 await websocket.send_json({"type": "error", "content": "Authentication failed"})
                 continue
 

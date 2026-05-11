@@ -1,6 +1,11 @@
 import operator
 from typing import Annotated, Sequence, TypedDict, Dict, Any, List
-from langgraph.graph import StateGraph, END
+
+try:
+    from langgraph.graph import StateGraph, END
+except ModuleNotFoundError:
+    StateGraph = None
+    END = "END"
 
 # Define the state object for the graph
 class AgentState(TypedDict):
@@ -91,29 +96,36 @@ def route_request(state: AgentState):
     else:
         return "messenger"
 
-# --- Define the Graph ---
+if StateGraph is not None:
+    workflow = StateGraph(AgentState)
 
-workflow = StateGraph(AgentState)
+    workflow.add_node("risk_analyzer", risk_analyzer_node)
+    workflow.add_node("strategic_advisor", strategic_advisor_node)
+    workflow.add_node("messenger", messenger_node)
 
-# Add nodes
-workflow.add_node("risk_analyzer", risk_analyzer_node)
-workflow.add_node("strategic_advisor", strategic_advisor_node)
-workflow.add_node("messenger", messenger_node)
+    workflow.set_conditional_entry_point(
+        route_request,
+        {
+            "risk_analyzer": "risk_analyzer",
+            "strategic_advisor": "strategic_advisor",
+            "messenger": "messenger"
+        }
+    )
 
-# Set entry point
-workflow.set_conditional_entry_point(
-    route_request,
-    {
-        "risk_analyzer": "risk_analyzer",
-        "strategic_advisor": "strategic_advisor",
-        "messenger": "messenger"
-    }
-)
+    workflow.add_edge("risk_analyzer", END)
+    workflow.add_edge("strategic_advisor", END)
+    workflow.add_edge("messenger", END)
 
-# Connect everything to END
-workflow.add_edge("risk_analyzer", END)
-workflow.add_edge("strategic_advisor", END)
-workflow.add_edge("messenger", END)
+    advisor_graph = workflow.compile()
+else:
+    class _FallbackAdvisorGraph:
+        def stream(self, state: AgentState):
+            route = route_request(state)
+            if route == "risk_analyzer":
+                yield {"risk_analyzer": risk_analyzer_node(state)}
+            elif route == "strategic_advisor":
+                yield {"strategic_advisor": strategic_advisor_node(state)}
+            else:
+                yield {"messenger": messenger_node(state)}
 
-# Compile the graph
-advisor_graph = workflow.compile()
+    advisor_graph = _FallbackAdvisorGraph()

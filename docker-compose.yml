@@ -7,8 +7,11 @@ services:
       dockerfile: backend.Dockerfile
     ports:
       - "8000:8000"
+    env_file:
+      - .env   # Loads SECRET_KEY, ENCRYPTION_KEY, ALGORITHM, etc. from local .env
     environment:
       - PORT=8000
+      - FRONTEND_ORIGIN=http://localhost:80
     restart: always
 
   frontend:

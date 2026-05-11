@@ -56,7 +56,8 @@ export default function ChatBot({ token, context }) {
 
     return () => {
       if (socketRef.current) {
-        // socketRef.current.close(); 
+        socketRef.current.close(); // Prevent connection leak on unmount
+        socketRef.current = null;
       }
     };
   }, [isOpen]);
