@@ -29,7 +29,11 @@ export default function Login({ setToken }) {
         setError('Registration successful! Please login.');
       }
     } catch (err) {
-      setError(err.response?.data?.detail || 'An error occurred');
+      const detail = err.response?.data?.detail;
+      const message = Array.isArray(detail)
+        ? detail.map((item) => item.msg).join(', ')
+        : detail;
+      setError(message || err.message || 'An error occurred');
     } finally {
       setLoading(false);
     }
